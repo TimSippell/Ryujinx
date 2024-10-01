@@ -51,7 +51,7 @@ namespace Ryujinx.Graphics.OpenGL.Image
                 pixelInternalFormat = format.PixelInternalFormat;
             }
 
-            int levels = Info.GetLevelsClamped();
+            int levels = Info.Levels;
 
             GL.TextureView(
                 Handle,
@@ -267,7 +267,7 @@ namespace Ryujinx.Graphics.OpenGL.Image
         public unsafe PinnedSpan<byte> GetData()
         {
             int size = 0;
-            int levels = Info.GetLevelsClamped();
+            int levels = Info.Levels;
 
             for (int level = 0; level < levels; level++)
             {
@@ -426,7 +426,7 @@ namespace Ryujinx.Graphics.OpenGL.Image
                 faces = 6;
             }
 
-            int levels = Info.GetLevelsClamped();
+            int levels = Info.Levels;
 
             for (int level = 0; level < levels; level++)
             {
@@ -448,70 +448,59 @@ namespace Ryujinx.Graphics.OpenGL.Image
             }
         }
 
-        public void SetData(SpanOrArray<byte> data)
+        public void SetData(MemoryOwner<byte> data)
         {
-            var dataSpan = data.AsSpan();
-
-            if (Format == Format.S8UintD24Unorm)
+            using (data = EnsureDataFormat(data))
             {
-                dataSpan = FormatConverter.ConvertS8D24ToD24S8(dataSpan);
-            }
-
-            unsafe
-            {
-                fixed (byte* ptr = dataSpan)
+                unsafe
                 {
-                    ReadFrom((IntPtr)ptr, dataSpan.Length);
+                    var dataSpan = data.Span;
+                    fixed (byte* ptr = dataSpan)
+                    {
+                        ReadFrom((IntPtr)ptr, dataSpan.Length);
+                    }
                 }
             }
         }
 
-        public void SetData(SpanOrArray<byte> data, int layer, int level)
+        public void SetData(MemoryOwner<byte> data, int layer, int level)
         {
-            var dataSpan = data.AsSpan();
-
-            if (Format == Format.S8UintD24Unorm)
+            using (data = EnsureDataFormat(data))
             {
-                dataSpan = FormatConverter.ConvertS8D24ToD24S8(dataSpan);
-            }
-
-            unsafe
-            {
-                fixed (byte* ptr = dataSpan)
+                unsafe
                 {
-                    int width = Math.Max(Info.Width >> level, 1);
-                    int height = Math.Max(Info.Height >> level, 1);
+                    fixed (byte* ptr = data.Span)
+                    {
+                        int width = Math.Max(Info.Width >> level, 1);
+                        int height = Math.Max(Info.Height >> level, 1);
 
-                    ReadFrom2D((IntPtr)ptr, layer, level, 0, 0, width, height);
+                        ReadFrom2D((IntPtr)ptr, layer, level, 0, 0, width, height);
+                    }
                 }
             }
         }
 
-        public void SetData(SpanOrArray<byte> data, int layer, int level, Rectangle<int> region)
+        public void SetData(MemoryOwner<byte> data, int layer, int level, Rectangle<int> region)
         {
-            var dataSpan = data.AsSpan();
-
-            if (Format == Format.S8UintD24Unorm)
+            using (data = EnsureDataFormat(data))
             {
-                dataSpan = FormatConverter.ConvertS8D24ToD24S8(dataSpan);
-            }
+                int wInBlocks = BitUtils.DivRoundUp(region.Width, Info.BlockWidth);
+                int hInBlocks = BitUtils.DivRoundUp(region.Height, Info.BlockHeight);
 
-            int wInBlocks = BitUtils.DivRoundUp(region.Width, Info.BlockWidth);
-            int hInBlocks = BitUtils.DivRoundUp(region.Height, Info.BlockHeight);
-
-            unsafe
-            {
-                fixed (byte* ptr = dataSpan)
+                unsafe
                 {
-                    ReadFrom2D(
-                        (IntPtr)ptr,
-                        layer,
-                        level,
-                        region.X,
-                        region.Y,
-                        region.Width,
-                        region.Height,
-                        BitUtils.AlignUp(wInBlocks * Info.BytesPerPixel, 4) * hInBlocks);
+                    fixed (byte* ptr = data.Span)
+                    {
+                        ReadFrom2D(
+                            (IntPtr)ptr,
+                            layer,
+                            level,
+                            region.X,
+                            region.Y,
+                            region.Width,
+                            region.Height,
+                            BitUtils.AlignUp(wInBlocks * Info.BytesPerPixel, 4) * hInBlocks);
+                    }
                 }
             }
         }
@@ -531,6 +520,19 @@ namespace Ryujinx.Graphics.OpenGL.Image
             int mipSize = Info.GetMipSize2D(level);
 
             ReadFrom2D(data, layer, level, x, y, width, height, mipSize);
+        }
+
+        private MemoryOwner<byte> EnsureDataFormat(MemoryOwner<byte> data)
+        {
+            if (Format == Format.S8UintD24Unorm)
+            {
+                using (data)
+                {
+                    return FormatConverter.ConvertS8D24ToD24S8(data.Span);
+                }
+            }
+
+            return data;
         }
 
         private void ReadFrom2D(IntPtr data, int layer, int level, int x, int y, int width, int height, int mipSize)
@@ -714,7 +716,7 @@ namespace Ryujinx.Graphics.OpenGL.Image
             int width = Info.Width;
             int height = Info.Height;
             int depth = Info.Depth;
-            int levels = Info.GetLevelsClamped();
+            int levels = Info.Levels;
 
             int offset = 0;
 

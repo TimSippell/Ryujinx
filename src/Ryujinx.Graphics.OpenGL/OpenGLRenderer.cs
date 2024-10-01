@@ -61,7 +61,9 @@ namespace Ryujinx.Graphics.OpenGL
         {
             BufferCount++;
 
-            if (access.HasFlag(GAL.BufferAccess.FlushPersistent))
+            var memType = access & GAL.BufferAccess.MemoryTypeMask;
+
+            if (memType == GAL.BufferAccess.HostMemory)
             {
                 BufferHandle handle = Buffer.CreatePersistent(size);
 
@@ -75,11 +77,6 @@ namespace Ryujinx.Graphics.OpenGL
             }
         }
 
-        public BufferHandle CreateBuffer(int size, GAL.BufferAccess access, BufferHandle storageHint)
-        {
-            return CreateBuffer(size, access);
-        }
-
         public BufferHandle CreateBuffer(nint pointer, int size)
         {
             throw new NotSupportedException();
@@ -88,6 +85,11 @@ namespace Ryujinx.Graphics.OpenGL
         public BufferHandle CreateBufferSparse(ReadOnlySpan<BufferRange> storageBuffers)
         {
             throw new NotSupportedException();
+        }
+
+        public IImageArray CreateImageArray(int size, bool isBuffer)
+        {
+            return new ImageArray(size);
         }
 
         public IProgram CreateProgram(ShaderSource[] shaders, ShaderInfo info)
@@ -110,6 +112,11 @@ namespace Ryujinx.Graphics.OpenGL
             {
                 return ResourcePool.GetTextureOrNull(info) ?? new TextureStorage(this, info).CreateDefaultView();
             }
+        }
+
+        public ITextureArray CreateTextureArray(int size, bool isBuffer)
+        {
+            return new TextureArray(size);
         }
 
         public void DeleteBuffer(BufferHandle buffer)
@@ -138,6 +145,7 @@ namespace Ryujinx.Graphics.OpenGL
             return new Capabilities(
                 api: TargetApi.OpenGL,
                 vendorName: GpuVendor,
+                memoryType: SystemMemoryType.BackendManaged,
                 hasFrontFacingBug: intelWindows,
                 hasVectorIndexingBug: amdWindows,
                 needsFragmentOutputSpecialization: false,
@@ -151,6 +159,7 @@ namespace Ryujinx.Graphics.OpenGL
                 supportsBgraFormat: false,
                 supportsR4G4Format: false,
                 supportsR4G4B4A4Format: true,
+                supportsScaledVertexFormats: true,
                 supportsSnormBufferTextureFormat: false,
                 supports5BitComponentFormat: true,
                 supportsSparseBuffer: false,
@@ -165,7 +174,8 @@ namespace Ryujinx.Graphics.OpenGL
                 supportsMismatchingViewFormat: HwCapabilities.SupportsMismatchingViewFormat,
                 supportsCubemapView: true,
                 supportsNonConstantTextureOffset: HwCapabilities.SupportsNonConstantTextureOffset,
-                supportsScaledVertexFormats: true,
+                supportsQuads: HwCapabilities.SupportsQuads,
+                supportsSeparateSampler: false,
                 supportsShaderBallot: HwCapabilities.SupportsShaderBallot,
                 supportsShaderBarrierDivergence: !(intelWindows || intelUnix),
                 supportsShaderFloat64: true,
@@ -177,6 +187,12 @@ namespace Ryujinx.Graphics.OpenGL
                 supportsViewportSwizzle: HwCapabilities.SupportsViewportSwizzle,
                 supportsIndirectParameters: HwCapabilities.SupportsIndirectParameters,
                 supportsDepthClipControl: true,
+                uniformBufferSetIndex: 0,
+                storageBufferSetIndex: 1,
+                textureSetIndex: 2,
+                imageSetIndex: 3,
+                extraSetBaseIndex: 0,
+                maximumExtraSets: 0,
                 maximumUniformBuffersPerStage: 13, // TODO: Avoid hardcoding those limits here and get from driver?
                 maximumStorageBuffersPerStage: 16,
                 maximumTexturesPerStage: 32,
@@ -186,7 +202,8 @@ namespace Ryujinx.Graphics.OpenGL
                 shaderSubgroupSize: Constants.MaxSubgroupSize,
                 storageBufferOffsetAlignment: HwCapabilities.StorageBufferOffsetAlignment,
                 textureBufferOffsetAlignment: HwCapabilities.TextureBufferOffsetAlignment,
-                gatherBiasPrecision: intelWindows || amdWindows ? 8 : 0); // Precision is 8 for these vendors on Vulkan.
+                gatherBiasPrecision: intelWindows || amdWindows ? 8 : 0, // Precision is 8 for these vendors on Vulkan.
+                maximumGpuMemory: 0);
         }
 
         public void SetBufferData(BufferHandle buffer, int offset, ReadOnlySpan<byte> data)

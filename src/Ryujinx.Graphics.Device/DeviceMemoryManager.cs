@@ -1,3 +1,4 @@
+using Ryujinx.Common.Memory;
 using Ryujinx.Memory;
 using System;
 using System.Runtime.CompilerServices;
@@ -143,11 +144,11 @@ namespace Ryujinx.Graphics.Device
             }
             else
             {
-                Memory<byte> memory = new byte[size];
+                MemoryOwner<byte> memoryOwner = MemoryOwner<byte>.Rent(size);
 
-                GetSpan(va, size).CopyTo(memory.Span);
+                ReadImpl(va, memoryOwner.Span);
 
-                return new WritableRegion(this, va, memory, tracked: true);
+                return new WritableRegion(this, va, memoryOwner, tracked: true);
             }
         }
 

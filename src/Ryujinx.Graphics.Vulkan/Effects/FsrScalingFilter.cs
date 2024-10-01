@@ -59,14 +59,14 @@ namespace Ryujinx.Graphics.Vulkan.Effects
             var scalingResourceLayout = new ResourceLayoutBuilder()
                 .Add(ResourceStages.Compute, ResourceType.UniformBuffer, 2)
                 .Add(ResourceStages.Compute, ResourceType.TextureAndSampler, 1)
-                .Add(ResourceStages.Compute, ResourceType.Image, 0).Build();
+                .Add(ResourceStages.Compute, ResourceType.Image, 0, true).Build();
 
             var sharpeningResourceLayout = new ResourceLayoutBuilder()
                 .Add(ResourceStages.Compute, ResourceType.UniformBuffer, 2)
                 .Add(ResourceStages.Compute, ResourceType.UniformBuffer, 3)
                 .Add(ResourceStages.Compute, ResourceType.UniformBuffer, 4)
                 .Add(ResourceStages.Compute, ResourceType.TextureAndSampler, 1)
-                .Add(ResourceStages.Compute, ResourceType.Image, 0).Build();
+                .Add(ResourceStages.Compute, ResourceType.Image, 0, true).Build();
 
             _sampler = _renderer.CreateSampler(SamplerCreateInfo.Create(MinFilter.Linear, MagFilter.Linear));
 
@@ -154,7 +154,7 @@ namespace Ryujinx.Graphics.Vulkan.Effects
             int dispatchY = (height + (threadGroupWorkRegionDim - 1)) / threadGroupWorkRegionDim;
 
             _pipeline.SetUniformBuffers(stackalloc[] { new BufferAssignment(2, buffer.Range) });
-            _pipeline.SetImage(ShaderStage.Compute, 0, _intermediaryTexture, FormatTable.ConvertRgba8SrgbToUnorm(view.Info.Format));
+            _pipeline.SetImage(ShaderStage.Compute, 0, _intermediaryTexture.GetView(FormatTable.ConvertRgba8SrgbToUnorm(view.Info.Format)));
             _pipeline.DispatchCompute(dispatchX, dispatchY, 1);
             _pipeline.ComputeBarrier();
 

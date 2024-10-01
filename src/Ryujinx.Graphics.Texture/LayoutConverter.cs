@@ -1,4 +1,5 @@
 using Ryujinx.Common;
+using Ryujinx.Common.Memory;
 using System;
 using System.Runtime.Intrinsics;
 using static Ryujinx.Graphics.Texture.BlockLinearConstants;
@@ -93,7 +94,7 @@ namespace Ryujinx.Graphics.Texture
             };
         }
 
-        public static byte[] ConvertBlockLinearToLinear(
+        public static MemoryOwner<byte> ConvertBlockLinearToLinear(
             int width,
             int height,
             int depth,
@@ -119,7 +120,8 @@ namespace Ryujinx.Graphics.Texture
                 blockHeight,
                 bytesPerPixel);
 
-            byte[] output = new byte[outSize];
+            MemoryOwner<byte> outputOwner = MemoryOwner<byte>.Rent(outSize);
+            Span<byte> output = outputOwner.Span;
 
             int outOffs = 0;
 
@@ -243,10 +245,10 @@ namespace Ryujinx.Graphics.Texture
                     _ => throw new NotSupportedException($"Unable to convert ${bytesPerPixel} bpp pixel format."),
                 };
             }
-            return output;
+            return outputOwner;
         }
 
-        public static byte[] ConvertLinearStridedToLinear(
+        public static MemoryOwner<byte> ConvertLinearStridedToLinear(
             int width,
             int height,
             int blockWidth,
@@ -262,8 +264,8 @@ namespace Ryujinx.Graphics.Texture
             int outStride = BitUtils.AlignUp(w * bytesPerPixel, HostStrideAlignment);
             lineSize = Math.Min(lineSize, outStride);
 
-            byte[] output = new byte[h * outStride];
-            Span<byte> outSpan = output;
+            MemoryOwner<byte> output = MemoryOwner<byte>.Rent(h * outStride);
+            Span<byte> outSpan = output.Span;
 
             int outOffs = 0;
             int inOffs = 0;

@@ -1,4 +1,5 @@
 using Ryujinx.Common;
+using Ryujinx.Common.Memory;
 using Ryujinx.Graphics.Texture.Encoders;
 using System;
 
@@ -9,7 +10,7 @@ namespace Ryujinx.Graphics.Texture
         private const int BlockWidth = 4;
         private const int BlockHeight = 4;
 
-        public static byte[] EncodeBC7(byte[] data, int width, int height, int depth, int levels, int layers)
+        public static MemoryOwner<byte> EncodeBC7(Memory<byte> data, int width, int height, int depth, int levels, int layers)
         {
             int size = 0;
 
@@ -21,7 +22,8 @@ namespace Ryujinx.Graphics.Texture
                 size += w * h * 16 * Math.Max(1, depth >> l) * layers;
             }
 
-            byte[] output = new byte[size];
+            MemoryOwner<byte> output = MemoryOwner<byte>.Rent(size);
+            Memory<byte> outputMemory = output.Memory;
 
             int imageBaseIOffs = 0;
             int imageBaseOOffs = 0;
@@ -36,8 +38,8 @@ namespace Ryujinx.Graphics.Texture
                     for (int z = 0; z < depth; z++)
                     {
                         BC7Encoder.Encode(
-                            output.AsMemory()[imageBaseOOffs..],
-                            data.AsMemory()[imageBaseIOffs..],
+                            outputMemory[imageBaseOOffs..],
+                            data[imageBaseIOffs..],
                             width,
                             height,
                             EncodeMode.Fast | EncodeMode.Multithreaded);

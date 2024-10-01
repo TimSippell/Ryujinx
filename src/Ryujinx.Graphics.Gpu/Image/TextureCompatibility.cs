@@ -247,6 +247,10 @@ namespace Ryujinx.Graphics.Gpu.Image
                 {
                     return TextureMatchQuality.FormatAlias;
                 }
+                else if (lhs.FormatInfo.Format == Format.D32FloatS8Uint && rhs.FormatInfo.Format == Format.R32G32Float)
+                {
+                    return TextureMatchQuality.FormatAlias;
+                }
             }
 
             return lhs.FormatInfo.Format == rhs.FormatInfo.Format ? TextureMatchQuality.Perfect : TextureMatchQuality.NoMatch;
@@ -735,7 +739,8 @@ namespace Ryujinx.Graphics.Gpu.Image
             }
 
             return (lhsFormat.Format == Format.R8G8B8A8Unorm && rhsFormat.Format == Format.R32G32B32A32Float) ||
-                   (lhsFormat.Format == Format.R8Unorm && rhsFormat.Format == Format.R8G8B8A8Unorm);
+                   (lhsFormat.Format == Format.R8Unorm && rhsFormat.Format == Format.R8G8B8A8Unorm) ||
+                   (lhsFormat.Format == Format.R8Unorm && rhsFormat.Format == Format.R32Uint);
         }
 
         /// <summary>
